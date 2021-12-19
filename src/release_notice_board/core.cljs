@@ -8,7 +8,9 @@
 
    ;; Move
    [re-frame.core :as rf]
-   [day8.re-frame.http-fx]))
+   [day8.re-frame.http-fx]
+   
+   [syn-antd.input :as input]))
 
 (def default-db
   {:current-user        nil
@@ -92,7 +94,9 @@
 
 (defn home-page []
   [:div
-   [:h2 "Welcome to Reagent!"]
+   [:h2 "Dashboard"]
+   [:p "Add new repos"]
+   [input/input {}]
    [:button {:on-click #(rf/dispatch [:repo-search/find "Octokit"])}
     "Search"]
    [:button {:on-click #(rf/dispatch [:releases/load-notes "SpinlockLabs/github.dart" 1])}
