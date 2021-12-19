@@ -1,5 +1,7 @@
 (ns release-notice-board.events-n-handlers
   (:require
+   [clojure.string :as string]
+
    [ajax.core :as ajax]
    [re-frame.core :as rf]
    [day8.re-frame.http-fx]
@@ -13,11 +15,7 @@
    :repos-suggested     []
 
    ;; Repos 
-   :repos-watching      {}
-
-   ;; Release Details
-   :current-repo        nil
-   :release-notes       {}})
+   :repos-watching      {}})
 
 (def repo-fields
   #{:full_name :forks :description :html_url :language :score :watchers})
@@ -49,7 +47,9 @@
 (rf/reg-event-db
  :repo-search/update-suggestions
  (fn [db [_ suggestions]]
-   (assoc db :repos-suggested (map #(select-keys % repo-fields) suggestions))))
+   (assoc db :repos-suggested (->> suggestions
+                                   (map #(select-keys % repo-fields))
+                                   (sort-by (comp string/lower-case :full_name))))))
 
 (rf/reg-event-db
  :repo-search/clear-suggestions
@@ -85,15 +85,65 @@
 
 
 
+;; (rf/reg-event-fx
+;;  :releases/load-notes-succeeded
+;;  (fn [{:keys [db]} [_ {:keys [items]}]]
+;;    {}))
+
+;; (rf/reg-event-fx
+;;  :releases/load-notes-failed
+;;  (fn [db _]
+;;    {}))
+
+;; (rf/reg-event-fx
+;;  :releases/load-notes
+;;  (fn [{:keys [db]} [_ repo-full-name page]]
+;;    {:db         (assoc db :repos-search-status :loading)
+;;     :http-xhrio {:method          :get
+;;                  :uri             (str "https://api.github.com/repos/" repo-full-name "/releases")
+;;                  :params          {:per_page 10
+;;                                    :page     page}
+;;                  :format          (ajax/json-request-format)
+;;                  :response-format (ajax/json-response-format {:keywords? true})
+;;                  :on-success      [:repo-search/find-succeeded]
+;;                  :on-failure      [:repo-search/find-failed]}}))
+
+
+
+(rf/reg-event-fx
+ :releases/load-latest-succeeded
+ (fn [{:keys [db]} [_ repo-full-name release-notes]]
+   {:db (update-in db
+                   [:repos-watching repo-full-name]
+                   merge
+                   (select-keys (first release-notes) #{:published_at :tag_name :body}))}))
+
+(rf/reg-event-fx
+ :releases/load-latest-failed
+ (fn [db [_ repo-full-name]]
+   {:show-message [:error (str "Could not file release data for " repo-full-name)]}))
+
+(rf/reg-event-fx
+ :releases/load-latest
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:db         (assoc db :repos-search-status :loading)
+    :http-xhrio {:method          :get
+                 :uri             (str "https://api.github.com/repos/" repo-full-name "/releases")
+                 :params          {:per_page 1}
+                 :format          (ajax/json-request-format)
+                 :response-format (ajax/json-response-format {:keywords? true})
+                 :on-success      [:releases/load-latest-succeeded repo-full-name]
+                 :on-failure      [:releases/load-latest-failed repo-full-name]}}))
+
 
 (rf/reg-sub
  :repos/watched
  (fn [db [_ & filters]]
    (->> (get db :repos-watching)
-        (sort-by (comp second :full_name)))))
+        (sort-by (comp string/lower-case :full_name second)))))
 
-(rf/reg-event-fx
- :repos/pull-info
+#_(rf/reg-event-fx
+ :repos/load-latest-info
  (fn [{:keys [db]} [_ query]]
    #_{:db         (assoc db :repos-search-status :loading)
       :http-xhrio {:method          :get
@@ -107,38 +157,23 @@
 
 (rf/reg-event-fx
  :repos/watch-repo
- (fn [{:keys [db]} [_ repo]]
-   {:db  (assoc-in db [:repos-watching (:full_name repo)] repo)}))
+ (fn [{:keys [db]} [_ {repo-full-name :full_name :as repo}]]
+   {:db  (assoc-in db [:repos-watching repo-full-name] repo)
+    :fx  [[:dispatch [:releases/load-latest repo-full-name]]]}))
 
 (rf/reg-event-fx
  :repos/unwatch-repo
- (fn [{:keys [db]} [_ repo]]
-   {:db  (update db :repos-watching dissoc (:full_name repo))}))
-
-
-
-
-
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:db  (update db :repos-watching dissoc repo-full-name)}))
 
 (rf/reg-event-fx
- :releases/load-notes-succeeded
- (fn [{:keys [db]} [_ {:keys [items]}]]
-   {}))
+ :repos/mark-read 
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:db  (assoc-in db [:repos-watching repo-full-name :read?] true)}))
 
 (rf/reg-event-fx
- :releases/load-notes-failed
- (fn [db _]
-   {}))
+ :repos/mark-unread
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:db  (assoc-in db [:repos-watching repo-full-name :read?] false)}))
 
-(rf/reg-event-fx
- :releases/load-notes
- (fn [{:keys [db]} [_ repo-full-name page]]
-   {:db         (assoc db :repos-search-status :loading)
-    :http-xhrio {:method          :get
-                 :uri             (str "https://api.github.com/repos/" repo-full-name "/releases")
-                 :params          {:per_page 10
-                                   :page     page}
-                 :format          (ajax/json-request-format)
-                 :response-format (ajax/json-response-format {:keywords? true})
-                 :on-success      [:repo-search/find-succeeded]
-                 :on-failure      [:repo-search/find-failed]}}))
+

@@ -53,8 +53,6 @@
   (let [repos @(rf/subscribe [:repos/watched])]
     [:div
      [:h2 "Watching"]
-     [:button {:on-click #(cljs.pprint/pprint @(rf/subscribe [:repos/watched]))}
-      "List"]
      (for [[full_name {:keys [forks description html_url language score watchers]
                        :as   repo}] repos]
        ^{:key full_name}
@@ -62,7 +60,7 @@
         [space/space
          [button/button {:shape    :circle
                          :size     :small
-                         :on-click #(rf/dispatch [:repos/unwatch-repo repo])}
+                         :on-click #(rf/dispatch [:repos/unwatch-repo full_name])}
           "-"]
          [:a {:href html_url} full_name]]])]))
 
