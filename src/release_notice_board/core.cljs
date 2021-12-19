@@ -51,7 +51,7 @@
                           :on-click #(rf/dispatch [:repos/watch-repo repo])}
            "+"]]
          [col/col {:flex "auto"}
-          [:a {:href html_url} full_name]
+          [:a {:href html_url :target :_blank} full_name]
           [:p.repo__description description]
           [row/row {:class "repo__other-details"}
            [col/col {:xs 12 :lg 6} "language: " language]
@@ -83,7 +83,7 @@
   [{repo-full-name :full_name
     :keys [description html_url language watchers tag_name published_at]}]
   [:div
-   [:a {:href html_url} repo-full-name]
+   [:a {:href html_url :target :_blank} repo-full-name]
    [:p.repo__description description]
    [row/row {:class "repo__other-details"}
     [col/col {:xs 12 :lg 6} "language: " language]
@@ -123,16 +123,19 @@
 
 (defn release-details []
   (let [{repo-full-name :full_name
-         :keys [body tag_name published_at]} @(rf/subscribe [:releases/current-latest])]
+         :keys [body tag_name published_at html_url]
+         :or   {published_at "N/A"}}       @(rf/subscribe [:releases/current-latest])]
     
-    [modal/modal {:class     ""
+    [modal/modal {:class     "details-view"
                   :visible   (some? repo-full-name)
+                  :width     "100%"
                   :footer    nil
                   :on-cancel #(rf/dispatch [:releases/close-latest-notes])}
      [:section.section
-      [:span repo-full-name]
+      [:a {:href html_url :target :_blank} repo-full-name]
       [:h2.section__title (str  "Release Notes " tag_name)]
-      [:p body]]]))
+      [:p.release__published-date "Published: " published_at]
+      [:p.release__notes body]]]))
 
 (defn home-page []
   [layout/layout

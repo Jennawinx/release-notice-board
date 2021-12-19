@@ -3,16 +3,36 @@
 
 */
 
-.page {
+.page,
+.ant-modal.details-view {
   max-width: 1200px;
   margin:    2em auto;
 }
 
+/* ANTD modal isn't very easily customizable, 
+   unfortunately have to do this */
+.ant-modal.details-view {
+  top: 0;
+  height: calc(100vh - 2em*2); 
+}
+
+.ant-modal.details-view .antd-modal-content {
+  height: 100%;
+  overflow-y: auto; 
+}
+
 @media (max-width: 1200px) {
-  .page {
-    margin: 1rem 3vw;
+  .page,
+  .ant-modal.details-view {
+    margin:  0;
+    padding: 1em 3vw;
+  }
+  .ant-modal.details-view {
+    height: calc(100vh - 1em*2);
   }
 }
+
+
 
 .page__heading {
   font-size:        2em;
@@ -70,5 +90,13 @@
 }
 
 .repo__other-details {
+  color:          grey;
+}
+
+.release__notes {
+  word-break:       break-word;
+}
+
+.release__published-date {
   color:          grey;
 }
