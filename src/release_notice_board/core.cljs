@@ -31,18 +31,40 @@
 (defn repo-suggestions []
   (let [repos @(rf/subscribe [:repo-search/suggestions])]
     [:div
-     (for [{:keys [full_name forks description html_url language score watchers]} repos]
+     (for [{:keys [full_name forks description html_url language score watchers] 
+            :as   repo} repos]
        ^{:key full_name}
        [:div
         [space/space
-         [button/button {:shape :circle :size :small} "+"]
+         [button/button {:shape    :circle 
+                         :size     :small
+                         :on-click #(rf/dispatch [:repos/watch-repo repo])} 
+          "+"]
          [:a {:href html_url} full_name]]])]))
 
 (defn repo-search-section []
   [:div
-   [:p "Add new repos"]
+   [:h2 "Find Repos"]
    [repo-searchbar]
    [repo-suggestions]])
+
+
+(defn repo-list []
+  (let [repos @(rf/subscribe [:repos/watched])]
+    [:div
+     [:h2 "Watching"]
+     [:button {:on-click #(cljs.pprint/pprint @(rf/subscribe [:repos/watched]))}
+      "List"]
+     (for [[full_name {:keys [forks description html_url language score watchers]
+                       :as   repo}] repos]
+       ^{:key full_name}
+       [:div
+        [space/space
+         [button/button {:shape    :circle
+                         :size     :small
+                         :on-click #(rf/dispatch [:repos/unwatch-repo repo])}
+          "-"]
+         [:a {:href html_url} full_name]]])]))
 
 (defn testing-stuuf []
   [:div
@@ -54,7 +76,8 @@
 
 (defn home-page []
   [:div
-   [:h2 "Dashboard"]
+   [:h1 "Dashboard"]
+   [repo-list]
    [repo-search-section]
    [:br]
    [:hr]
