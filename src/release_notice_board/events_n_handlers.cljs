@@ -38,6 +38,23 @@
      :warn    (message/warn-ant-message message)
      :info    (message/info-ant-message message))))
 
+
+(rf/reg-sub
+ :session/user
+ (fn [db]
+   (get db :current-user)))
+
+(rf/reg-event-fx
+ :session/change-user
+ (fn [{:keys [db]} [_ username]]
+   {:db (assoc db :current-user username)}))
+
+(rf/reg-event-fx
+ :session/logout-user
+ (fn [{:keys [db]} _]
+   {:db (assoc db :current-user nil)}))
+
+
 (rf/reg-sub
  :repo-search/suggestions
  (fn [db]

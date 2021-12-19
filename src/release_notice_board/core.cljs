@@ -12,6 +12,7 @@
    ;; Components
    [syn-antd.button :as button]
    [syn-antd.col    :as col]
+   [syn-antd.form   :as form]
    [syn-antd.input  :as input]
    [syn-antd.layout :as layout]
    [syn-antd.modal  :as modal]
@@ -137,16 +138,36 @@
       [:p.release__published-date "Published: " published_at]
       [:p.release__notes body]]]))
 
+(defn dashboard []
+  [:div.page
+   [:a {:on-click #(rf/dispatch [:session/logout-user])} "logout"]
+   [:h1.page__heading "Dashboard"]
+   [repo-search-section]
+   [watched-repo-section]
+   [release-details]
+   [:br]
+   [testing-stuuf]])
+
+(defn login []
+  (let [username (r/atom nil)]
+    [:div.page
+     [:h1.page__heading "Login As"]
+     [:section.section
+      [:h2.section__title "Username"]
+      [form/form-item
+       [input/input
+        {:on-change (fn [e]
+                      (reset! username (utils/element-value e)))}]]
+      [button/button
+       {:on-click #(rf/dispatch [:session/change-user @username])}
+       "Enter"]]]))
+
 (defn home-page []
   [layout/layout
    [layout/layout-content {:style {:min-height :100vh}}
-    [:div.page
-     [:h1.page__heading "Dashboard"]
-     [repo-search-section]
-     [watched-repo-section]
-     [release-details]
-     [:br]
-     [testing-stuuf]]]])
+    (if (some? @(rf/subscribe [:session/user]))
+      [dashboard]
+      [login])]])
 
 ;; -------------------------
 ;; Initialize app
