@@ -20,6 +20,9 @@
 (def repo-fields
   #{:full_name :forks :description :html_url :language :score :watchers})
 
+(def repo-fields-release
+  #{:published_at :tag_name :body})
+
 (rf/reg-event-fx
  :initialize-db
  (fn [_ _]
@@ -116,7 +119,7 @@
    {:db (update-in db
                    [:repos-watching repo-full-name]
                    merge
-                   (select-keys (first release-notes) #{:published_at :tag_name :body}))}))
+                   (select-keys (first release-notes) repo-fields-release))}))
 
 (rf/reg-event-fx
  :releases/load-latest-failed
@@ -169,11 +172,11 @@
 (rf/reg-event-fx
  :repos/mark-read 
  (fn [{:keys [db]} [_ repo-full-name]]
-   {:db  (assoc-in db [:repos-watching repo-full-name :read?] true)}))
+   {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] true)}))
 
 (rf/reg-event-fx
  :repos/mark-unread
  (fn [{:keys [db]} [_ repo-full-name]]
-   {:db  (assoc-in db [:repos-watching repo-full-name :read?] false)}))
+   {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] nil)}))
 
 

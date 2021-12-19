@@ -15,7 +15,11 @@
    [syn-antd.row    :as row]
    [syn-antd.col    :as col]
    [syn-antd.button :as button]
-   [syn-antd.space :as space]))
+   [syn-antd.space  :as space]
+   
+   [syn-antd.icons.notification-filled :as notification-filled]
+   
+   ))
 
 ;; -------------------------
 ;; Views
@@ -48,10 +52,10 @@
           [:a {:href html_url} full_name]
           [:p.repo__description description]
           [row/row {:class "repo__other-details"}
-           [col/col {:span 6} "language: " language]
-           [col/col {:span 6} "watchers: " watchers]
-           [col/col {:span 6} "forks: " forks]
-           [col/col {:span 6} "score: " score]]]]])]))
+           [col/col {:xs 12 :lg 6} "language: " language]
+           [col/col {:xs 12 :lg 6} "watchers: " watchers]
+           [col/col {:xs 12 :lg 6} "forks: " forks]
+           [col/col {:xs 12 :lg 6} "score: " score]]]]])]))
 
 (defn repo-search-section []
   [:section.section
@@ -64,16 +68,31 @@
   (let [repos @(rf/subscribe [:repos/watched])]
     [:section.section
      [:h2.section__title "Watching"]
-     (for [[full_name {:keys [forks description html_url language score watchers]
-                       :as   repo}] repos]
-       ^{:key full_name}
-       [:div
-        [space/space
-         [button/button {:shape    :circle
-                         :size     :small
-                         :on-click #(rf/dispatch [:repos/unwatch-repo full_name])}
-          "-"]
-         [:a {:href html_url} full_name]]])]))
+     [:div.repo-list
+      (for [[full_name {:keys [description html_url language watchers tag_name published_at]
+                        :as   repo}] repos]
+        (let [unread? true]
+          ^{:key full_name}
+          [:div.repo-list_list-item.repo-list_list-item--hoverable 
+           {:class    (if unread? "repo-list_list-item--unread" "")}
+           [row/row {:wrap false}
+            [col/col {:flex "30px"}
+             [space/space {:direction :vertical
+                           :align     :center}
+              [button/button {:shape    :circle
+                              :size     :small
+                              :on-click #(rf/dispatch [:repos/unwatch-repo full_name])}
+               "-"]
+              (when unread?
+                [notification-filled/notification-filled {:style {:color :orange}}])]]
+            [col/col {:flex "auto"}
+             [:a {:href html_url} full_name]
+             [:p.repo__description description]
+             [row/row {:class "repo__other-details"}
+              [col/col {:xs 12 :lg 6} "language: " language]
+              [col/col {:xs 12 :lg 6} "watchers: " watchers]
+              [col/col {:xs 12 :lg 6} "latest-release: " tag_name]
+              [col/col {:xs 12 :lg 6} "published: " published_at]]]]]))]]))
 
 (defn testing-stuuf []
   [:div
