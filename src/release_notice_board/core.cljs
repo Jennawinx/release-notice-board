@@ -10,7 +10,10 @@
    [release-notice-board.events-n-handlers :as handlers]
 
    ;; Components
+   [syn-antd.layout :as layout]
    [syn-antd.input  :as input]
+   [syn-antd.row    :as row]
+   [syn-antd.col    :as col]
    [syn-antd.button :as button]
    [syn-antd.space :as space]))
 
@@ -30,29 +33,37 @@
 
 (defn repo-suggestions []
   (let [repos @(rf/subscribe [:repo-search/suggestions])]
-    [:div
+    [:div.repo-list
      (for [{:keys [full_name forks description html_url language score watchers] 
             :as   repo} repos]
        ^{:key full_name}
-       [:div
-        [space/space
-         [button/button {:shape    :circle 
-                         :size     :small
-                         :on-click #(rf/dispatch [:repos/watch-repo repo])} 
-          "+"]
-         [:a {:href html_url} full_name]]])]))
+       [:div.repo-list_list-item
+        [row/row {:wrap false}
+         [col/col {:flex "30px"}
+          [button/button {:shape    :circle
+                          :size     :small
+                          :on-click #(rf/dispatch [:repos/watch-repo repo])}
+           "+"]]
+         [col/col {:flex "auto"}
+          [:a {:href html_url} full_name]
+          [:p.repo__description description]
+          [row/row {:class "repo__other-details"}
+           [col/col {:span 6} "language: " language]
+           [col/col {:span 6} "watchers: " watchers]
+           [col/col {:span 6} "forks: " forks]
+           [col/col {:span 6} "score: " score]]]]])]))
 
 (defn repo-search-section []
-  [:div
-   [:h2 "Find Repos"]
+  [:section.section
+   [:h2.section__title "Find Repos"]
    [repo-searchbar]
    [repo-suggestions]])
 
 
-(defn repo-list []
+(defn repo-watching-section []
   (let [repos @(rf/subscribe [:repos/watched])]
-    [:div
-     [:h2 "Watching"]
+    [:section.section
+     [:h2.section__title "Watching"]
      (for [[full_name {:keys [forks description html_url language score watchers]
                        :as   repo}] repos]
        ^{:key full_name}
@@ -73,13 +84,14 @@
 
 
 (defn home-page []
-  [:div
-   [:h1 "Dashboard"]
-   [repo-list]
-   [repo-search-section]
-   [:br]
-   [:hr]
-   [testing-stuuf]])
+  [layout/layout
+   [layout/layout-content {:style {:min-height :100vh}}
+    [:div.page
+     [:h1.page__heading "Dashboard"]
+     [repo-search-section]
+     [repo-watching-section]
+     [:br]
+     [testing-stuuf]]]])
 
 ;; -------------------------
 ;; Initialize app

@@ -1,5 +1,65 @@
-#app {
-  font-family: 'Helvetica Neue', Verdana, Helvetica, Arial, sans-serif;
+/* 
+  color: SteelBlue;
+
+*/
+
+.page {
   max-width: 1200px;
-  margin: 0 auto;
+  margin:    2em auto;
+}
+
+@media (max-width: 1200px) {
+  .page {
+    margin: 1rem 3vw;
+  }
+}
+
+.page__heading {
+  font-size:        2em;
+  font-weight:      bold;
+  color:            LightSeaGreen;
+  text-align:       center;
+}
+
+.section {
+  background-color: white;
+  margin:           1em auto;
+  border-radius:    0.25em;
+  padding:          2em;
+}
+}
+
+.section__main-body {
+  background-color: white;
+  border-radius:    0.25em;
+  padding:          2em;
+}
+
+@media (max-width: 640px) {
+  .section {
+    padding:        1.25em;
+  }
+}
+
+.section__title {}
+
+.repo-list {
+  
+}
+
+.repo-list_list-item {
+  background-color: white;
+  border-bottom: 1px solid gainsboro;
+  border-radius: 0.25em;
+  margin: 0.5em 0;
+  padding: 1em;
+  /* border-top: none; */
+}
+
+.repo__description {
+  word-break: break-word;
+}
+
+.repo__other-details {
+  color: grey;
 }
