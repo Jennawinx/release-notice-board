@@ -15,7 +15,8 @@
    :repos-suggested     []
 
    ;; Repos 
-   :repos-watching      {}})
+   :repos-watching      {}
+   :current-repo        nil})
 
 (def repo-fields
   #{:full_name :forks :description :html_url :language :score :watchers})
@@ -138,12 +139,42 @@
                  :on-success      [:releases/load-latest-succeeded repo-full-name]
                  :on-failure      [:releases/load-latest-failed repo-full-name]}}))
 
+(rf/reg-sub
+ :releases/current-repo
+ (fn [db]
+   (get db :current-repo)))
+
+(rf/reg-sub
+ :releases/current-latest
+ :<-[:repos/watched]
+ :<-[:releases/current-repo]
+ (fn [[repos repo-full-name] _]
+   ;; NOTE: maybe it wasn't a good idea to write 
+   ;;       release notes into the same map as the watched repos
+   (get repos repo-full-name)))
+
+(rf/reg-event-fx
+ :releases/open-latest-notes
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:db  (assoc db :current-repo repo-full-name)
+    :fx  [[:dispatch [:repos/mark-read repo-full-name]]]}))
+
+(rf/reg-event-fx
+ :releases/close-latest-notes
+ (fn [{:keys [db]} _]
+   {:db  (assoc db :current-repo nil)}))
+
 
 (rf/reg-sub
  :repos/watched
  (fn [db [_ & filters]]
-   (->> (get db :repos-watching)
-        (sort-by (comp string/lower-case :full_name second)))))
+   (get db :repos-watching)))
+
+(rf/reg-sub
+ :repos/watched-sorted
+ :<- [:repos/watched]
+ (fn [repos [_ & filter]]
+   (sort-by (comp string/lower-case :full_name second) repos)))
 
 #_(rf/reg-event-fx
  :repos/load-latest-info
@@ -178,5 +209,4 @@
  :repos/mark-unread
  (fn [{:keys [db]} [_ repo-full-name]]
    {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] nil)}))
-
 
