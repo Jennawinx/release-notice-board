@@ -79,6 +79,8 @@
 }
 
 .repo__description {
+  max-height:       10em;
+  overflow-y:       auto;
   word-break:       break-word;
 }
 
