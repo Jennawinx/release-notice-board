@@ -70,11 +70,11 @@
 
 .repo-list_list-item--hoverable:hover {
   cursor: pointer;
-  background-color: rgb(240,240,248);
+  background-color: rgb(230,245, 232);
 }
 
 .repo-list_list-item--unread {
-  background-color: rgb(248,248,252);
+  background-color: rgb(242,242,250);
   font-weight:      bold;
 }
 

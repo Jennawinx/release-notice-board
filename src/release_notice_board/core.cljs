@@ -82,7 +82,9 @@
 
 (defn repo-item-summary
   [{repo-full-name :full_name
-    :keys [description html_url language watchers tag_name published_at]}]
+    :keys [description html_url language watchers tag_name published_at]
+    :or   {tag_name     "N/A"
+           published_at "N/A"}}]
   [:div
    [:a {:href html_url :target :_blank} repo-full-name]
    [:p.repo__description description]
@@ -96,7 +98,7 @@
   [{repo-full-name :full_name 
     :keys [last-seen] 
     :as   repo}]
-  (let [unread? (not last-seen)]
+  (let [unread? (not @(rf/subscribe [:repos/read? repo-full-name]))]
     [:div.repo-list_list-item.repo-list_list-item--hoverable
      {:class    (if unread? "repo-list_list-item--unread" "")}
      [row/row {:wrap false}

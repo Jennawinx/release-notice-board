@@ -217,10 +217,20 @@
  (fn [{:keys [db]} [_ repo-full-name]]
    {:db  (update db :repos-watching dissoc repo-full-name)}))
 
+(rf/reg-sub
+ :repos/read?
+ :<- [:repos/watched]
+ (fn [repos [_ repo-full-name]]
+   (let [{:keys [published_at last-seen]} (get repos repo-full-name)]
+     ;; NOTE: Very lazy way of seeing whether the user has read the release
+     ;;       This should probably work assuming that the user doesn't time
+     (= published_at last-seen))))
+
 (rf/reg-event-fx
  :repos/mark-read 
  (fn [{:keys [db]} [_ repo-full-name]]
-   {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] true)}))
+   (let [published_at (get-in db [:repos-watching repo-full-name :published_at])]
+     {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] published_at)})))
 
 (rf/reg-event-fx
  :repos/mark-unread
