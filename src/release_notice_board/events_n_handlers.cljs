@@ -6,7 +6,8 @@
    [re-frame.core :as rf]
    [day8.re-frame.http-fx]
    
-   [syn-antd.message :as message]))
+   [syn-antd.message :as message]
+   [cljs.reader :as reader]))
 
 (def default-db
   {:current-user        nil
@@ -26,17 +27,50 @@
 
 (rf/reg-event-fx
  :initialize-db
- (fn [_ _]
-   {:db default-db}))
+ [(rf/inject-cofx :local-storage/get-user)]
+ (fn [{:keys [local-store]}_]
+   {:db (assoc default-db :current-user (:current-user local-store))}))
 
-(rf/reg-fx 
- :show-message 
+(rf/reg-event-fx
+ :initialize-dashboard 
+ [(rf/inject-cofx :local-storage/get-data)]
+ (fn [{:keys [db local-store]} _]
+   {:db (assoc db :repos-watching (:repos-watching local-store))}))
+
+(rf/reg-fx
+ :show-message
  (fn [[type message]]
-   (case type 
+   (case type
      :error   (message/error-ant-message message)
      :success (message/success-ant-message message)
      :warn    (message/warn-ant-message message)
      :info    (message/info-ant-message message))))
+
+(rf/reg-cofx
+ :local-storage/get-user
+ (fn [cofx _]
+   (assoc cofx :local-store {:current-user (.getItem js/localStorage :current-user)})))
+
+(rf/reg-cofx
+ :local-storage/get-data
+ (fn [{:keys [db] :as cofx} _]
+   (assoc cofx
+          :local-store
+          {:repos-watching (some->> (:current-user db)
+                                    (.getItem js/localStorage)
+                                    (reader/read-string))})))
+
+(rf/reg-event-fx
+ :local-storage/save-user
+ (fn [_ [_ username]]
+   (.setItem js/localStorage :current-user username)
+   {}))
+
+(rf/reg-event-fx
+ :local-storage/save-data
+ (fn [{:keys [db]} _]
+   (.setItem js/localStorage (:current-user db) (pr-str (:repos-watching db)))
+   {}))
 
 
 (rf/reg-sub
@@ -47,12 +81,14 @@
 (rf/reg-event-fx
  :session/change-user
  (fn [{:keys [db]} [_ username]]
-   {:db (assoc db :current-user username)}))
+   {:db (assoc db :current-user username)
+    :fx [[:dispatch [:local-storage/save-user username]]]}))
 
 (rf/reg-event-fx
  :session/logout-user
  (fn [{:keys [db]} _]
-   {:db (assoc db :current-user nil)}))
+   {:db (assoc db :current-user nil)
+    :fx [[:dispatch [:local-storage/save-user nil]]]}))
 
 
 (rf/reg-sub
@@ -102,33 +138,6 @@
                  :response-format (ajax/json-response-format {:keywords? true})
                  :on-success      [:repo-search/find-succeeded]
                  :on-failure      [:repo-search/find-failed]}})) 
-
-
-
-
-;; (rf/reg-event-fx
-;;  :releases/load-notes-succeeded
-;;  (fn [{:keys [db]} [_ {:keys [items]}]]
-;;    {}))
-
-;; (rf/reg-event-fx
-;;  :releases/load-notes-failed
-;;  (fn [db _]
-;;    {}))
-
-;; (rf/reg-event-fx
-;;  :releases/load-notes
-;;  (fn [{:keys [db]} [_ repo-full-name page]]
-;;    {:db         (assoc db :repos-search-status :loading)
-;;     :http-xhrio {:method          :get
-;;                  :uri             (str "https://api.github.com/repos/" repo-full-name "/releases")
-;;                  :params          {:per_page 10
-;;                                    :page     page}
-;;                  :format          (ajax/json-request-format)
-;;                  :response-format (ajax/json-response-format {:keywords? true})
-;;                  :on-success      [:repo-search/find-succeeded]
-;;                  :on-failure      [:repo-search/find-failed]}}))
-
 
 
 (rf/reg-event-fx
@@ -193,29 +202,18 @@
  (fn [repos [_ & filter]]
    (sort-by (comp string/lower-case :full_name second) repos)))
 
-#_(rf/reg-event-fx
- :repos/load-latest-info
- (fn [{:keys [db]} [_ query]]
-   #_{:db         (assoc db :repos-search-status :loading)
-      :http-xhrio {:method          :get
-                   :uri             "https://api.github.com/search/repositories"
-                   :params          {:q        query
-                                     :per_page 10}
-                   :format          (ajax/json-request-format)
-                   :response-format (ajax/json-response-format {:keywords? true})
-                   :on-success      [:repo-search/find-succeeded]
-                   :on-failure      [:repo-search/find-failed]}}))
-
 (rf/reg-event-fx
  :repos/watch-repo
  (fn [{:keys [db]} [_ {repo-full-name :full_name :as repo}]]
    {:db  (assoc-in db [:repos-watching repo-full-name] repo)
-    :fx  [[:dispatch [:releases/load-latest repo-full-name]]]}))
+    :fx  [[:dispatch [:local-storage/save-data]]
+          [:dispatch [:releases/load-latest repo-full-name]]]}))
 
 (rf/reg-event-fx
  :repos/unwatch-repo
  (fn [{:keys [db]} [_ repo-full-name]]
-   {:db  (update db :repos-watching dissoc repo-full-name)}))
+   {:db  (update db :repos-watching dissoc repo-full-name)
+    :fx  [[:dispatch [:local-storage/save-data]]]}))
 
 (rf/reg-sub
  :repos/read?
@@ -230,10 +228,12 @@
  :repos/mark-read 
  (fn [{:keys [db]} [_ repo-full-name]]
    (let [published_at (get-in db [:repos-watching repo-full-name :published_at])]
-     {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] published_at)})))
+     {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] published_at)
+      :fx  [[:dispatch [:local-storage/save-data]]]})))
 
 (rf/reg-event-fx
  :repos/mark-unread
  (fn [{:keys [db]} [_ repo-full-name]]
-   {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] nil)}))
+   {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] nil)
+    :fx  [[:dispatch [:local-storage/save-data]]]}))
 

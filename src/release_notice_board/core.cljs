@@ -19,6 +19,7 @@
    [syn-antd.row    :as row]
    [syn-antd.space  :as space]
    
+   ;; Icons
    [syn-antd.icons.notification-filled :as notification-filled]
    [syn-antd.icons.notification-outlined :as notification-outlined]
    
@@ -115,7 +116,9 @@
      [:div.repo-list
       (for [[full_name repo] repos]
         ^{:key full_name}
-        [watched-repo-item repo])]]))
+        [watched-repo-item repo])]
+     (when (empty? repos)
+       [:p "Search and add new repos to get notifications!"])]))
 
 (defn testing-stuuf []
   [:div
@@ -141,14 +144,24 @@
       [:p.release__notes body]]]))
 
 (defn dashboard []
-  [:div.page
-   [:a {:on-click #(rf/dispatch [:session/logout-user])} "logout"]
-   [:h1.page__heading "Dashboard"]
-   [repo-search-section]
-   [watched-repo-section]
-   [release-details]
-   [:br]
-   [testing-stuuf]])
+  (r/create-class
+   {:display-name  "Dashboard"
+    :component-did-mount
+    (fn [_]
+      (rf/dispatch-sync [:initialize-dashboard]))
+    :component-will-unmount
+    (fn [_]
+      (rf/dispatch [:repo-search/clear-suggestions]))
+    :reagent-render
+    (fn []
+      [:div.page
+       [:a {:on-click #(rf/dispatch [:session/logout-user])} "logout"]
+       [:h1.page__heading "Dashboard"]
+       [repo-search-section]
+       [watched-repo-section]
+       [release-details]
+       [:br]
+       [testing-stuuf]])}))
 
 (defn login []
   (let [username (r/atom nil)]
