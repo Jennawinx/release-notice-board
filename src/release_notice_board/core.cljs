@@ -76,10 +76,10 @@
    (if unread?
      [notification-filled/notification-filled
       {:style    {:color :orange}
-       :on-click #(rf/dispatch [:repos/mark-read repo-full-name])}]
+       :on-click #(rf/dispatch [:releases/mark-read repo-full-name])}]
      [notification-outlined/notification-outlined
       {:style    {:color :grey}
-       :on-click #(rf/dispatch [:repos/mark-unread repo-full-name])}])])
+       :on-click #(rf/dispatch [:releases/mark-unread repo-full-name])}])])
 
 (defn repo-item-summary
   [{repo-full-name :full_name
@@ -99,7 +99,7 @@
   [{repo-full-name :full_name 
     :keys [last-seen] 
     :as   repo}]
-  (let [unread? (not @(rf/subscribe [:repos/read? repo-full-name]))]
+  (let [unread? (not @(rf/subscribe [:releases/read? repo-full-name]))]
     [:div.repo-list_list-item.repo-list_list-item--hoverable
      {:class    (if unread? "repo-list_list-item--unread" "")}
      [row/row {:wrap false}
@@ -120,17 +120,10 @@
      (when (empty? repos)
        [:p "Search and add new repos to get notifications!"])]))
 
-(defn testing-stuuf []
-  [:div
-   [:button {:on-click #(rf/dispatch [:repo-search/find "Octokit"])}
-    "Search"]
-   [:button {:on-click #(rf/dispatch [:releases/load-notes "SpinlockLabs/github.dart" 1])}
-    "Releases"]])
-
 (defn release-details []
   (let [{repo-full-name :full_name
          :keys [body tag_name published_at html_url]
-         :or   {published_at "N/A"}}       @(rf/subscribe [:releases/current-latest])]
+         :or   {published_at "N/A"}} @(rf/subscribe [:releases/current-latest-release])]
     
     [modal/modal {:class     "details-view"
                   :visible   (some? repo-full-name)
@@ -142,6 +135,14 @@
       [:h2.section__title (str  "Release Notes " tag_name)]
       [:p.release__published-date "Published: " published_at]
       [:p.release__notes body]]]))
+
+(defn testing-stuuf []
+  [:div
+   [:br]
+   [:button {:on-click #(rf/dispatch [:repo-search/find "Octokit"])}
+    "Search"]
+   [:button {:on-click #(rf/dispatch [:releases/load-notes "SpinlockLabs/github.dart" 1])}
+    "Releases"]])
 
 (defn dashboard []
   (r/create-class
@@ -160,8 +161,7 @@
        [repo-search-section]
        [watched-repo-section]
        [release-details]
-       [:br]
-       [testing-stuuf]])}))
+       #_[testing-stuuf]])}))
 
 (defn login []
   (let [username (r/atom nil)]

@@ -9,13 +9,17 @@
    [syn-antd.message :as message]
    [cljs.reader :as reader]))
 
+;; ---- Definitions ----
+
 (def default-db
-  {:current-user        nil
-   ;; Homepage
+  {;; Session Related
+   :current-user        nil
+   
+   ;; Searching Related
    :repos-search-status :loading
    :repos-suggested     []
 
-   ;; Repos 
+   ;; Repos % Release Related 
    :repos-watching      {}
    :current-repo        nil})
 
@@ -24,6 +28,8 @@
 
 (def repo-fields-release
   #{:published_at :tag_name :body})
+
+;; ---- Handlers for Initialization ----
 
 (rf/reg-event-fx
  :initialize-db
@@ -42,6 +48,8 @@
            [:dispatch [:repos/reload-repo-details repo-full-name]])
          (keys (:repos-watching local-store)))}))
 
+;; ---- Handlers for Errors ----
+
 (rf/reg-fx
  :show-message
  (fn [[type message]]
@@ -50,6 +58,8 @@
      :success (message/success-ant-message message)
      :warn    (message/warn-ant-message message)
      :info    (message/info-ant-message message))))
+
+;; ---- Handlers for Local Storage ----
 
 (rf/reg-cofx
  :local-storage/get-user
@@ -77,6 +87,7 @@
    (.setItem js/localStorage (:current-user db) (pr-str (:repos-watching db)))
    {}))
 
+;; ---- Handlers for User Session ----
 
 (rf/reg-sub
  :session/user
@@ -95,6 +106,7 @@
    {:db (assoc db :current-user nil)
     :fx [[:dispatch [:local-storage/save-user nil]]]}))
 
+;; ---- Handlers for searching ----
 
 (rf/reg-sub
  :repo-search/suggestions
@@ -124,11 +136,11 @@
    {:db (assoc db :repos-search-status :finished)
     :fx [[:dispatch [:repo-search/update-suggestions items]]]}))
 
-(rf/reg-event-db
+(rf/reg-event-fx
  :repo-search/find-failed
- (fn [db _]
-   (assoc db :repos-search-status :failed)))
-
+ (fn [{:keys [db]} _]
+   {:db           (assoc db :repos-search-status :failed)
+    :show-message [:error "Search could not be completed. API probably needs a second to breathe."]}))
 
 
 (rf/reg-event-fx
@@ -145,30 +157,7 @@
                  :on-failure      [:repo-search/find-failed]}})) 
 
 
-(rf/reg-event-fx
- :releases/load-latest-succeeded
- (fn [{:keys [db]} [_ repo-full-name release-notes]]
-   {:db (update-in db
-                   [:repos-watching repo-full-name]
-                   merge
-                   (select-keys (first release-notes) repo-fields-release))}))
-
-(rf/reg-event-fx
- :releases/load-latest-failed
- (fn [db [_ repo-full-name]]
-   {:show-message [:error (str "Could not file release data for " repo-full-name)]}))
-
-(rf/reg-event-fx
- :releases/load-latest
- (fn [{:keys [db]} [_ repo-full-name]]
-   {:db         (assoc db :repos-search-status :loading)
-    :http-xhrio {:method          :get
-                 :uri             (str "https://api.github.com/repos/" repo-full-name "/releases")
-                 :params          {:per_page 1}
-                 :format          (ajax/json-request-format)
-                 :response-format (ajax/json-response-format {:keywords? true})
-                 :on-success      [:releases/load-latest-succeeded repo-full-name]
-                 :on-failure      [:releases/load-latest-failed repo-full-name]}}))
+;; ---- Handlers for repo watching ----
 
 (rf/reg-event-fx
  :repos/reload-repo-details-succeeded
@@ -194,33 +183,6 @@
                  :on-success      [:repos/reload-repo-details-succeeded repo-full-name]
                  :on-failure      [:repos/reload-repo-details-failed repo-full-name]}}))
 
-
-(rf/reg-sub
- :releases/current-repo
- (fn [db]
-   (get db :current-repo)))
-
-(rf/reg-sub
- :releases/current-latest
- :<-[:repos/watched]
- :<-[:releases/current-repo]
- (fn [[repos repo-full-name] _]
-   ;; NOTE: maybe it wasn't a good idea to write 
-   ;;       release notes into the same map as the watched repos
-   (get repos repo-full-name)))
-
-(rf/reg-event-fx
- :releases/open-latest-notes
- (fn [{:keys [db]} [_ repo-full-name]]
-   {:db  (assoc db :current-repo repo-full-name)
-    :fx  [[:dispatch [:repos/mark-read repo-full-name]]]}))
-
-(rf/reg-event-fx
- :releases/close-latest-notes
- (fn [{:keys [db]} _]
-   {:db  (assoc db :current-repo nil)}))
-
-
 (rf/reg-sub
  :repos/watched
  (fn [db [_ & filters]]
@@ -245,8 +207,10 @@
    {:db  (update db :repos-watching dissoc repo-full-name)
     :fx  [[:dispatch [:local-storage/save-data]]]}))
 
+;; ---- Handlers for releases ----
+
 (rf/reg-sub
- :repos/read?
+ :releases/read?
  :<- [:repos/watched]
  (fn [repos [_ repo-full-name]]
    (let [{:keys [published_at last-seen]} (get repos repo-full-name)]
@@ -255,14 +219,65 @@
      (= published_at last-seen))))
 
 (rf/reg-event-fx
- :repos/mark-read 
+ :releases/mark-read
  (fn [{:keys [db]} [_ repo-full-name]]
    (let [published_at (get-in db [:repos-watching repo-full-name :published_at])]
      {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] published_at)
       :fx  [[:dispatch [:local-storage/save-data]]]})))
 
 (rf/reg-event-fx
- :repos/mark-unread
+ :releases/mark-unread
  (fn [{:keys [db]} [_ repo-full-name]]
    {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] nil)
     :fx  [[:dispatch [:local-storage/save-data]]]}))
+
+(rf/reg-event-fx
+ :releases/load-latest-succeeded
+ (fn [{:keys [db]} [_ repo-full-name release-notes]]
+   {:db (update-in db
+                   [:repos-watching repo-full-name]
+                   merge
+                   (select-keys (first release-notes) repo-fields-release))}))
+
+(rf/reg-event-fx
+ :releases/load-latest-failed
+ (fn [db [_ repo-full-name]]
+   {:show-message [:error (str "Could not get new release data for " repo-full-name)]}))
+
+(rf/reg-event-fx
+ :releases/load-latest
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:db         (assoc db :repos-search-status :loading)
+    :http-xhrio {:method          :get
+                 :uri             (str "https://api.github.com/repos/" repo-full-name "/releases")
+                 :params          {:per_page 1}
+                 :format          (ajax/json-request-format)
+                 :response-format (ajax/json-response-format {:keywords? true})
+                 :on-success      [:releases/load-latest-succeeded repo-full-name]
+                 :on-failure      [:releases/load-latest-failed repo-full-name]}}))
+
+(rf/reg-sub
+ :releases/current-repo
+ (fn [db]
+   (get db :current-repo)))
+
+(rf/reg-sub
+ :releases/current-latest-release
+ :<- [:repos/watched]
+ :<- [:releases/current-repo]
+ (fn [[repos repo-full-name] _]
+   ;; NOTE: maybe it wasn't a good idea to write 
+   ;;       release notes into the same map as the watched repos
+   (get repos repo-full-name)))
+
+
+(rf/reg-event-fx
+ :releases/open-latest-notes
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:db  (assoc db :current-repo repo-full-name)
+    :fx  [[:dispatch [:releases/mark-read repo-full-name]]]}))
+
+(rf/reg-event-fx
+ :releases/close-latest-notes
+ (fn [{:keys [db]} _]
+   {:db  (assoc db :current-repo nil)}))
