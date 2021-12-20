@@ -171,6 +171,8 @@
 (rf/reg-event-fx
  :repo/reload-repo-details-failed
  (fn [_ _]
+   ;; TODO: Need way to not spam server, hitting limit gives error
+   ;;       Silent failing for now
    {}))
 
 (rf/reg-event-fx
@@ -242,7 +244,9 @@
 (rf/reg-event-fx
  :releases/load-latest-failed
  (fn [db [_ repo-full-name]]
-   {:show-message [:error (str "Could not get new release data for " repo-full-name)]}))
+   ;; TODO: Need way to not spam server, hitting limit gives error
+   ;;       Silent failing for now
+   {#_#_:show-message [:error (str "Could not get new release data for " repo-full-name)]}))
 
 (rf/reg-event-fx
  :releases/load-latest

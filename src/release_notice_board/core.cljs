@@ -1,6 +1,7 @@
 (ns release-notice-board.core
   (:require
    [clojure.string :as string]
+   [markdown.core :as md]
 
    [reagent.core :as r]
    [reagent.dom :as d]
@@ -132,7 +133,9 @@
       [:a {:href html_url :target :_blank} repo-full-name]
       [:h2.section__title (str  "Release Notes " tag_name)]
       [:p.release__published-date "Published: " published_at]
-      [:p.release__notes body]]]))
+      [:p.release__notes 
+       {:dangerouslySetInnerHTML 
+        {:__html (md/md->html body)}}]]]))
 
 (defn testing-stuuf []
   [:div

@@ -9,7 +9,8 @@
                 [day8.re-frame/http-fx "0.2.3"]
 
                 [cljs-ajax "0.7.5"]
-                [syn-antd "4.17.2"]]
+                [syn-antd "4.17.2"]
+                [markdown-clj "1.10.8"]]
  
  :builds       {:app {:target     :browser
                       :output-dir "public/js"
