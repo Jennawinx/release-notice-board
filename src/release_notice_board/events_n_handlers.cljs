@@ -20,7 +20,7 @@
    :current-repo        nil})
 
 (def repo-fields
-  #{:full_name :forks :description :html_url :language :score :watchers})
+  #{:full_name :forks :description :html_url :language :stargazers_count :watchers})
 
 (def repo-fields-release
   #{:published_at :tag_name :body})
@@ -35,7 +35,12 @@
  :initialize-dashboard 
  [(rf/inject-cofx :local-storage/get-data)]
  (fn [{:keys [db local-store]} _]
-   {:db (assoc db :repos-watching (:repos-watching local-store))}))
+   {:db (assoc db :repos-watching (:repos-watching local-store))
+    ;; NOTE: Not sure if this is the best way to check for updates...
+    :fx (map
+         (fn [repo-full-name]
+           [:dispatch [:repos/reload-repo-details repo-full-name]])
+         (keys (:repos-watching local-store)))}))
 
 (rf/reg-fx
  :show-message
@@ -165,6 +170,31 @@
                  :on-success      [:releases/load-latest-succeeded repo-full-name]
                  :on-failure      [:releases/load-latest-failed repo-full-name]}}))
 
+(rf/reg-event-fx
+ :repos/reload-repo-details-succeeded
+ (fn [{:keys [db]} [_ repo-full-name repo-details]]
+   {:db (update-in db
+                   [:repos-watching repo-full-name]
+                   merge
+                   (select-keys repo-details repo-fields))
+    :fx [[:dispatch [:releases/load-latest repo-full-name]]]}))
+
+(rf/reg-event-fx
+ :repos/reload-repo-details-failed
+ (fn [_ _]
+   {}))
+
+(rf/reg-event-fx
+ :repos/reload-repo-details
+ (fn [{:keys [db]} [_ repo-full-name]]
+   {:http-xhrio {:method          :get
+                 :uri             (str "https://api.github.com/repos/" repo-full-name)
+                 :format          (ajax/json-request-format)
+                 :response-format (ajax/json-response-format {:keywords? true})
+                 :on-success      [:repos/reload-repo-details-succeeded repo-full-name]
+                 :on-failure      [:repos/reload-repo-details-failed repo-full-name]}}))
+
+
 (rf/reg-sub
  :releases/current-repo
  (fn [db]
@@ -236,4 +266,3 @@
  (fn [{:keys [db]} [_ repo-full-name]]
    {:db  (assoc-in db [:repos-watching repo-full-name :last-seen] nil)
     :fx  [[:dispatch [:local-storage/save-data]]]}))
-

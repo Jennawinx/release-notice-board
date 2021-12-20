@@ -42,7 +42,7 @@
 (defn repo-suggestions []
   (let [repos @(rf/subscribe [:repo-search/suggestions])]
     [:div.repo-list
-     (for [{:keys [full_name forks description html_url language score watchers] 
+     (for [{:keys [full_name forks description html_url language stargazers_count watchers] 
             :as   repo} repos]
        ^{:key full_name}
        [:div.repo-list_list-item
@@ -59,7 +59,7 @@
            [col/col {:xs 12 :lg 6} "language: " language]
            [col/col {:xs 12 :lg 6} "watchers: " watchers]
            [col/col {:xs 12 :lg 6} "forks: " forks]
-           [col/col {:xs 12 :lg 6} "score: " score]]]]])]))
+           [col/col {:xs 12 :lg 6} "stargazers_count: " stargazers_count]]]]])]))
 
 (defn repo-search-section []
   [:section.section
