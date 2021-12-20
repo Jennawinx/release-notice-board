@@ -45,7 +45,7 @@
     ;; NOTE: Not sure if this is the best way to check for updates...
     :fx (map
          (fn [repo-full-name]
-           [:dispatch [:repos/reload-repo-details repo-full-name]])
+           [:dispatch [:repo/reload-repo-details repo-full-name]])
          (keys (:repos-watching local-store)))}))
 
 ;; ---- Handlers for Errors ----
@@ -160,7 +160,7 @@
 ;; ---- Handlers for repo watching ----
 
 (rf/reg-event-fx
- :repos/reload-repo-details-succeeded
+ :repo/reload-repo-details-succeeded
  (fn [{:keys [db]} [_ repo-full-name repo-details]]
    {:db (update-in db
                    [:repos-watching repo-full-name]
@@ -169,40 +169,40 @@
     :fx [[:dispatch [:releases/load-latest repo-full-name]]]}))
 
 (rf/reg-event-fx
- :repos/reload-repo-details-failed
+ :repo/reload-repo-details-failed
  (fn [_ _]
    {}))
 
 (rf/reg-event-fx
- :repos/reload-repo-details
+ :repo/reload-repo-details
  (fn [{:keys [db]} [_ repo-full-name]]
    {:http-xhrio {:method          :get
                  :uri             (str "https://api.github.com/repos/" repo-full-name)
                  :format          (ajax/json-request-format)
                  :response-format (ajax/json-response-format {:keywords? true})
-                 :on-success      [:repos/reload-repo-details-succeeded repo-full-name]
-                 :on-failure      [:repos/reload-repo-details-failed repo-full-name]}}))
+                 :on-success      [:repo/reload-repo-details-succeeded repo-full-name]
+                 :on-failure      [:repo/reload-repo-details-failed repo-full-name]}}))
 
 (rf/reg-sub
- :repos/watched
- (fn [db [_ & filters]]
+ :repo/watched
+ (fn [db _]
    (get db :repos-watching)))
 
 (rf/reg-sub
- :repos/watched-sorted
- :<- [:repos/watched]
+ :repo/watched-sorted
+ :<- [:repo/watched]
  (fn [repos [_ & filter]]
    (sort-by (comp string/lower-case :full_name second) repos)))
 
 (rf/reg-event-fx
- :repos/watch-repo
+ :repo/watch-repo
  (fn [{:keys [db]} [_ {repo-full-name :full_name :as repo}]]
    {:db  (assoc-in db [:repos-watching repo-full-name] repo)
     :fx  [[:dispatch [:local-storage/save-data]]
           [:dispatch [:releases/load-latest repo-full-name]]]}))
 
 (rf/reg-event-fx
- :repos/unwatch-repo
+ :repo/unwatch-repo
  (fn [{:keys [db]} [_ repo-full-name]]
    {:db  (update db :repos-watching dissoc repo-full-name)
     :fx  [[:dispatch [:local-storage/save-data]]]}))
@@ -211,7 +211,7 @@
 
 (rf/reg-sub
  :releases/read?
- :<- [:repos/watched]
+ :<- [:repo/watched]
  (fn [repos [_ repo-full-name]]
    (let [{:keys [published_at last-seen]} (get repos repo-full-name)]
      ;; NOTE: Very lazy way of seeing whether the user has read the release
@@ -263,7 +263,7 @@
 
 (rf/reg-sub
  :releases/current-latest-release
- :<- [:repos/watched]
+ :<- [:repo/watched]
  :<- [:releases/current-repo]
  (fn [[repos repo-full-name] _]
    ;; NOTE: maybe it wasn't a good idea to write 

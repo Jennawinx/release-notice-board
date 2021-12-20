@@ -21,9 +21,7 @@
    
    ;; Icons
    [syn-antd.icons.notification-filled :as notification-filled]
-   [syn-antd.icons.notification-outlined :as notification-outlined]
-   
-   ))
+   [syn-antd.icons.notification-outlined :as notification-outlined]))
 
 ;; -------------------------
 ;; Views
@@ -50,7 +48,7 @@
          [col/col {:flex "30px"}
           [button/button {:shape    :circle
                           :size     :small
-                          :on-click #(rf/dispatch [:repos/watch-repo repo])}
+                          :on-click #(rf/dispatch [:repo/watch-repo repo])}
            "+"]]
          [col/col {:flex "auto"}
           [:a {:href html_url :target :_blank} full_name]
@@ -71,7 +69,7 @@
   [space/space {:direction :vertical :align :center}
    [button/button {:shape    :circle
                    :size     :small
-                   :on-click #(rf/dispatch [:repos/unwatch-repo repo-full-name])}
+                   :on-click #(rf/dispatch [:repo/unwatch-repo repo-full-name])}
     "-"]
    (if unread?
      [notification-filled/notification-filled
@@ -110,7 +108,7 @@
        [repo-item-summary repo]]]]))
 
 (defn watched-repo-section []
-  (let [repos @(rf/subscribe [:repos/watched-sorted])]
+  (let [repos @(rf/subscribe [:repo/watched-sorted])]
     [:section.section
      [:h2.section__title "Watching"]
      [:div.repo-list
